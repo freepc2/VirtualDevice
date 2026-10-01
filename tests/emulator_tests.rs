@@ -11,41 +11,212 @@ fn test_comizoa_auto_generation() {
 }
 
 #[test]
-fn bench_memory_throughput_10k() {
+fn bench_write_throughput_1s() {
     let mut mem = DeviceMemory::new();
-    let count = 10_000;
+    let duration = std::time::Duration::from_secs(1);
+    let start = std::time::Instant::now();
+    let mut count: u64 = 0;
 
-    let start_write = std::time::Instant::now();
-    for i in 0..count {
-        let addr = PhyAddress::from_twincat(
-            1,
-            0x1000 + (i as u32),
-            (i % 16) as u16,
-            Some((i % 16) as u8),
-            DataType::Bit,
-        );
-        mem.write_silent(addr, i as u16);
-    }
-    let duration_write = start_write.elapsed();
+    while start.elapsed() < duration {
+        let is_dio = count % 2 == 0;
+        let board_id = ((count / 65536) % 256) as u8;
+        let offset = (count % 65536) as u16;
+        let base_addr = if is_dio { 0x1000 } else { 0x2000 };
 
-    let start_read = std::time::Instant::now();
-    for i in 0..count {
-        let addr = PhyAddress::from_twincat(
-            1,
-            0x1000 + (i as u32),
-            (i % 16) as u16,
-            Some((i % 16) as u8),
-            DataType::Bit,
-        );
-        let _val = mem.read(&addr);
+        let addr = if is_dio {
+            PhyAddress::from_twincat(
+                board_id,
+                base_addr,
+                offset,
+                Some((count % 16) as u8),
+                DataType::Bit,
+            )
+        } else {
+            PhyAddress::from_twincat(
+                board_id,
+                base_addr,
+                offset,
+                None,
+                DataType::Word,
+            )
+        };
+        mem.write_silent(addr, (count % 65536) as u16);
+        count += 1;
     }
-    let duration_read = start_read.elapsed();
+
+    let total_items = mem.storage.len();
+    let dio_count = mem.storage.keys().filter(|a| a.bit.is_some() || a.data_type == DataType::Bit).count();
+    let aio_count = total_items - dio_count;
+    let approx_memory_bytes = total_items * (std::mem::size_of::<PhyAddress>() + std::mem::size_of::<u16>());
 
     println!("\n========================================");
-    println!("🚀 Integration Benchmark (10K Items):");
-    println!("- Write 10K: {:?} ({:.2} ops/sec)", duration_write, count as f64 / duration_write.as_secs_f64());
-    println!("- Read  10K: {:?} ({:.2} ops/sec)", duration_read, count as f64 / duration_read.as_secs_f64());
+    println!("🚀 1-Second New Address Generation & Write Benchmark:");
+    println!("- Total Unique Writes in 1s: {} ops", count);
+    println!("- Stored Items in Memory: {}", total_items);
+    println!("- DIO Created: {}", dio_count);
+    println!("- AIO Created: {}", aio_count);
+    println!("- Approx Memory Usage: {} bytes ({:.2} MB)", approx_memory_bytes, approx_memory_bytes as f64 / (1024.0 * 1024.0));
     println!("========================================\n");
 
-    assert_eq!(mem.storage.len(), count);
+    assert_eq!(count, total_items as u64);
+}
+
+#[test]
+fn bench_read_throughput_1s() {
+    let mut mem = DeviceMemory::new();
+    let pre_count = 500_000;
+    
+    for i in 0..pre_count {
+        let is_dio = i % 2 == 0;
+        let board_id = ((i / 65536) % 256) as u8;
+        let offset = (i % 65536) as u16;
+        let base_addr = if is_dio { 0x1000 } else { 0x2000 };
+
+        let addr = if is_dio {
+            PhyAddress::from_twincat(
+                board_id,
+                base_addr,
+                offset,
+                Some((i % 16) as u8),
+                DataType::Bit,
+            )
+        } else {
+            PhyAddress::from_twincat(
+                board_id,
+                base_addr,
+                offset,
+                None,
+                DataType::Word,
+            )
+        };
+        mem.write_silent(addr, i as u16);
+    }
+
+    let duration = std::time::Duration::from_secs(1);
+    let start = std::time::Instant::now();
+    let mut count: u64 = 0;
+
+    while start.elapsed() < duration {
+        let idx = (count % pre_count) as usize;
+        let is_dio = idx % 2 == 0;
+        let board_id = ((idx / 65536) % 256) as u8;
+        let offset = (idx % 65536) as u16;
+        let base_addr = if is_dio { 0x1000 } else { 0x2000 };
+
+        let addr = if is_dio {
+            PhyAddress::from_twincat(
+                board_id,
+                base_addr,
+                offset,
+                Some((idx % 16) as u8),
+                DataType::Bit,
+            )
+        } else {
+            PhyAddress::from_twincat(
+                board_id,
+                base_addr,
+                offset,
+                None,
+                DataType::Word,
+            )
+        };
+        let _val = mem.read(&addr);
+        count += 1;
+    }
+
+    let total_items = mem.storage.len();
+    let dio_count = mem.storage.keys().filter(|a| a.bit.is_some() || a.data_type == DataType::Bit).count();
+    let aio_count = total_items - dio_count;
+    let approx_memory_bytes = total_items * (std::mem::size_of::<PhyAddress>() + std::mem::size_of::<u16>());
+
+    println!("\n========================================");
+    println!("🚀 1-Second Read Throughput (Existing 500K Memory):");
+    println!("- Total Reads in 1s: {} ops", count);
+    println!("- Pre-populated Items: {}", total_items);
+    println!("- DIO Count: {}", dio_count);
+    println!("- AIO Count: {}", aio_count);
+    println!("- Approx Memory Usage: {} bytes ({:.2} MB)", approx_memory_bytes, approx_memory_bytes as f64 / (1024.0 * 1024.0));
+    println!("========================================\n");
+
+    assert!(count > 0);
+}
+
+#[test]
+fn bench_update_existing_throughput_1s() {
+    let mut mem = DeviceMemory::new();
+    let pre_count = 500_000;
+
+    for i in 0..pre_count {
+        let is_dio = i % 2 == 0;
+        let board_id = ((i / 65536) % 256) as u8;
+        let offset = (i % 65536) as u16;
+        let base_addr = if is_dio { 0x1000 } else { 0x2000 };
+
+        let addr = if is_dio {
+            PhyAddress::from_twincat(
+                board_id,
+                base_addr,
+                offset,
+                Some((i % 16) as u8),
+                DataType::Bit,
+            )
+        } else {
+            PhyAddress::from_twincat(
+                board_id,
+                base_addr,
+                offset,
+                None,
+                DataType::Word,
+            )
+        };
+        mem.write_silent(addr, i as u16);
+    }
+
+    let duration = std::time::Duration::from_secs(1);
+    let start = std::time::Instant::now();
+    let mut count: u64 = 0;
+
+    while start.elapsed() < duration {
+        let idx = (count % pre_count) as usize;
+        let is_dio = idx % 2 == 0;
+        let board_id = ((idx / 65536) % 256) as u8;
+        let offset = (idx % 65536) as u16;
+        let base_addr = if is_dio { 0x1000 } else { 0x2000 };
+
+        let addr = if is_dio {
+            PhyAddress::from_twincat(
+                board_id,
+                base_addr,
+                offset,
+                Some((idx % 16) as u8),
+                DataType::Bit,
+            )
+        } else {
+            PhyAddress::from_twincat(
+                board_id,
+                base_addr,
+                offset,
+                None,
+                DataType::Word,
+            )
+        };
+        mem.write_silent(addr, (count % 65536) as u16);
+        count += 1;
+    }
+
+    let total_items = mem.storage.len();
+    let dio_count = mem.storage.keys().filter(|a| a.bit.is_some() || a.data_type == DataType::Bit).count();
+    let aio_count = total_items - dio_count;
+    let approx_memory_bytes = total_items * (std::mem::size_of::<PhyAddress>() + std::mem::size_of::<u16>());
+
+    println!("\n========================================");
+    println!("🚀 1-Second Update/Overwrite Throughput (Existing 500K Memory):");
+    println!("- Total Updates/Writes in 1s: {} ops", count);
+    println!("- Pre-populated Items: {}", total_items);
+    println!("- DIO Count: {}", dio_count);
+    println!("- AIO Count: {}", aio_count);
+    println!("- Approx Memory Usage: {} bytes ({:.2} MB)", approx_memory_bytes, approx_memory_bytes as f64 / (1024.0 * 1024.0));
+    println!("========================================\n");
+
+    assert_eq!(total_items, pre_count as usize);
 }
