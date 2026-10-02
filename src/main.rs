@@ -1,16 +1,32 @@
-use virtualdevice::{DataType, DeviceMemory, MotorEmulator, PhyAddress};
+use virtualdevice::{LocalServer, NetworkMemory, IoPoint, ModuleMemory};
 
 fn main() {
-    println!("=== Virtual Device Emulator - Main Entry Point ===");
+    println!("=== Virtual Device Emulator (New Architecture) ===");
 
-    let mut memory = DeviceMemory::new();
-    let mut motor = MotorEmulator::new(1);
+    let mut server = LocalServer::new("DEV-001");
+    let net_id = 1;
 
-    // TwinCAT 방식 주소 예시
-    let twincat_addr = PhyAddress::from_twincat(1, 0x1000, 0, Some(0), DataType::Word);
-    memory.write(twincat_addr, 1500); // 모터 속도 설정
+    let mut net_mem = NetworkMemory {
+        net_id,
+        ..Default::default()
+    };
 
-    // 모터 에뮬레이터 틱 실행
-    motor.tick(&mut memory, &twincat_addr);
-    println!("Motor Axis {} Speed set to: {}", motor.axis_id, motor.speed);
+    let module_id = 1;
+    net_mem.modules.insert(module_id, ModuleMemory {
+        input_image: vec![0; 10],
+        output_image: vec![0; 10],
+    });
+
+    net_mem.dio_points.resize(11, None);
+    net_mem.dio_points[10] = Some(IoPoint::Digital {
+        module_id,
+        is_output: true,
+        offset: 0,
+        bit_mask: Some(0x01),
+    });
+
+    server.memory.networks.insert(net_id, net_mem);
+
+    println!("LocalServer initialized for Device: {}", server.device_id);
+    println!("Network {} registered with module memory and DIO point.", net_id);
 }

@@ -1,4 +1,4 @@
-use crate::device_memory::{DeviceMemory, PhyAddress};
+use crate::device_memory::{LegacyDeviceMemory as DeviceMemory, PhyAddress};
 
 /// 모터 에뮬레이터 구조체
 pub struct MotorEmulator {

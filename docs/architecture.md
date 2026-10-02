@@ -29,7 +29,7 @@ D:\Dev\VirtualDevice\
 
 ### 모듈 구성안
 1. **Core (`core`)**:
-   - **역할**: 순수 도메인 로직, 메모리 맵(Address, Offset, Mapper), 에뮬레이션 계산 규칙(A2D, P2A, Random Noise 등).
+   - **역할**: 순수 도메인 로직, 메모리 맵(Address, Offset, Mapper), 에뮬레이션 계산 규칙(A2D, P2A, Random Noise 등). 상세한 메모리 배치 및 I/O 매핑 설계는 [Device Memory Architecture Design](./device_memory_design.md)을 참조하세요.
    - **특징**: 파일 I/O(`std::fs`, `tokio::fs`) 및 네트워크(`NATS`) 의존성 없음 (순수 러스트 구조체 및 연산).
 2. **Config Loader (`config-loader`)**:
    - **역할**: YAML / CSV 설정 파일을 읽어 Core가 요구하는 구조체로 파싱 및 검증.

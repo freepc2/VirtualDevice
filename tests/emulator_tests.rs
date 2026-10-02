@@ -1,4 +1,4 @@
-use virtualdevice::{DataType, DeviceMemory, PhyAddress};
+use virtualdevice::{DataType, LegacyDeviceMemory as DeviceMemory, PhyAddress};
 
 #[test]
 fn test_comizoa_auto_generation() {
@@ -220,3 +220,59 @@ fn bench_update_existing_throughput_1s() {
 
     assert_eq!(total_items, pre_count as usize);
 }
+
+#[test]
+fn test_new_memory_architecture() {
+    use virtualdevice::{LocalServer, NetworkMemory, IoPoint, ValueKind, ModuleMemory};
+
+    let mut server = LocalServer::new("DEV-001");
+    let net_id = 1;
+
+    let mut net_mem = NetworkMemory {
+        net_id,
+        ..Default::default()
+    };
+
+    // Register module 1 with input and output image vectors (e.g., 10 bytes each)
+    let module_id = 1;
+    net_mem.modules.insert(module_id, ModuleMemory {
+        input_image: vec![0; 10],
+        output_image: vec![0; 10],
+    });
+
+    // Register DIO point at IONumber 10 -> module 1, output, offset 0, bit_mask Some(1)
+    net_mem.dio_points.resize(11, None);
+    net_mem.dio_points[10] = Some(IoPoint::Digital {
+        module_id,
+        is_output: true,
+        offset: 0,
+        bit_mask: Some(0x01),
+    });
+
+    // Register AIO point at IONumber 5 -> module 1, input, offset 2, size 2, ValueKind::U16
+    net_mem.aio_points.resize(6, None);
+    net_mem.aio_points[5] = Some(IoPoint::Analog {
+        module_id,
+        is_output: false,
+        offset: 2,
+        size_bytes: 2,
+        value_kind: ValueKind::U16,
+    });
+
+    server.memory.networks.insert(net_id, net_mem);
+
+    assert_eq!(server.device_id, "DEV-001");
+    assert!(server.memory.networks.contains_key(&net_id));
+
+    let net = server.memory.networks.get(&net_id).unwrap();
+    let dio = net.dio_points[10].as_ref().unwrap();
+    if let IoPoint::Digital { module_id, is_output, offset, bit_mask } = dio {
+        assert_eq!(*module_id, 1);
+        assert!(*is_output);
+        assert_eq!(*offset, 0);
+        assert_eq!(*bit_mask, Some(0x01));
+    } else {
+        panic!("Expected Digital IoPoint");
+    }
+}
+
