@@ -1,12 +1,10 @@
 pub mod address;
+pub mod local_server;
 pub mod memory;
-pub mod server;
 
-pub use address::{DataType, PhyAddress};
-pub use memory::{
-    NetworkMemory, IoPoint, ValueKind, ModuleMemory, ImageRef, NetId, IoNumber, ModuleId, Axis,
-    LegacyDeviceMemory,
+pub use address::{
+    AccessMode, AddressError, Axis, BitPosition, ComizoaLayout, DeviceType, IoNumber, IoType,
+    NetId, OffsetAddress, PhyAddress, PhysicalAddress, PhysicalIoAddress, SizeBytes, ValueKind,
 };
-pub use server::{
-    LocalServer, DeviceMemory, MotorState,
-};
+pub use local_server::LocalServer;
+pub use memory::{IoValue, MemoryError, NetworkMemory};

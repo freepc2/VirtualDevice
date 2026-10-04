@@ -1,5 +1,5 @@
-pub mod motor;
 pub mod io;
+pub mod motor;
 
-pub use motor::MotorEmulator;
 pub use io::IoEmulator;
+pub use motor::MotorEmulator;
