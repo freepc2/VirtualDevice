@@ -118,7 +118,7 @@ fn address<B: BoardType>(direction: Direction, offset: usize, kind: AccessKind) 
 }
 
 fn bench_digital<B: BoardType>(memory: &mut BoardMemory<B>) {
-    let addresses: Vec<_> = (0..DATA_POINTS)
+    let output_addresses: Vec<_> = (0..DATA_POINTS)
         .map(|index| {
             let (offset, bit_position) = if B::BOOL_IS_BYTE {
                 (index, 0)
@@ -136,7 +136,7 @@ fn bench_digital<B: BoardType>(memory: &mut BoardMemory<B>) {
         })
         .collect();
     let write = measure(|round| {
-        for (index, point) in addresses.iter().enumerate() {
+        for (index, point) in output_addresses.iter().enumerate() {
             memory
                 .write_digital(point, (round + index) % 2 == 0)
                 .unwrap();
@@ -144,12 +144,49 @@ fn bench_digital<B: BoardType>(memory: &mut BoardMemory<B>) {
         black_box(&memory.outputs);
     });
     let read = measure(|_| {
-        for point in &addresses {
-            black_box(memory.read_digital(point).unwrap());
+        for point in &output_addresses {
+            black_box(memory.read_digital_output(point).unwrap());
         }
     });
     report("write_digital", "bool", write, DATA_POINTS, None);
     report("read_digital", "bool", read, DATA_POINTS, None);
+
+    let write_output = measure(|round| {
+        for (index, point) in output_addresses.iter().enumerate() {
+            memory
+                .write_digital_output(point, (round + index) % 2 == 0)
+                .unwrap();
+        }
+        black_box(&memory.outputs);
+    });
+    report("write_digital_out", "bool", write_output, DATA_POINTS, None);
+
+    let input_addresses: Vec<_> = output_addresses
+        .iter()
+        .map(|point| {
+            IoAddress::new(
+                Direction::Input,
+                point.phyaddress,
+                point.offset,
+                point.access_kind,
+            )
+        })
+        .collect();
+    let write_input = measure(|round| {
+        for (index, point) in input_addresses.iter().enumerate() {
+            memory
+                .write_digital_input(point, (round + index) % 2 == 0)
+                .unwrap();
+        }
+        black_box(&memory.inputs);
+    });
+    let read_input = measure(|_| {
+        for point in &input_addresses {
+            black_box(memory.read_digital_input(point).unwrap());
+        }
+    });
+    report("write_digital_in", "bool", write_input, DATA_POINTS, None);
+    report("read_digital_in", "bool", read_input, DATA_POINTS, None);
 }
 
 fn bench_analog_type<B: BoardType, T: AnalogValue + Default + 'static>(

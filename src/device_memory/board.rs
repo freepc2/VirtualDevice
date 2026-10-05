@@ -7,6 +7,9 @@ pub trait BoardType: Sized + 'static {
 
     /// Whether each digital value occupies one byte.
     const BOOL_IS_BYTE: bool;
+
+    /// Whether a digital address points to an individual byte per bit position.
+    const DIGITAL_BIT_IS_BYTE_OFFSET: bool = Self::BOOL_IS_BYTE;
 }
 
 #[derive(Clone, Copy, Debug, Default)]

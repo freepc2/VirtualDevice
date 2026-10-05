@@ -18,12 +18,12 @@ fn bit_addressed_boards_preserve_other_bits_in_the_same_byte() {
     );
     let mut memory = BoardMemory::<TwinCAT2>::new(AmsAddr::default(), 2, 2);
 
-    memory.write_digital(&bit_zero, true).unwrap();
-    memory.write_digital(&bit_three, true).unwrap();
-    memory.write_digital(&bit_zero, false).unwrap();
+    memory.write_digital_output(&bit_zero, true).unwrap();
+    memory.write_digital_output(&bit_three, true).unwrap();
+    memory.write_digital_output(&bit_zero, false).unwrap();
 
-    assert!(!memory.read_digital(&bit_zero).unwrap());
-    assert!(memory.read_digital(&bit_three).unwrap());
+    assert!(!memory.read_digital_output(&bit_zero).unwrap());
+    assert!(memory.read_digital_output(&bit_three).unwrap());
     assert_eq!(memory.outputs[0], 0b0000_1000);
 }
 
@@ -43,8 +43,8 @@ fn packed_sixteen_bit_addresses_access_both_bytes_of_a_word() {
         2,
     );
 
-    memory.write_digital(&bit_eight, true).unwrap();
-    assert!(memory.read_digital(&bit_eight).unwrap());
+    memory.write_digital_output(&bit_eight, true).unwrap();
+    assert!(memory.read_digital_output(&bit_eight).unwrap());
     assert_eq!(memory.outputs, [0, 1]);
 }
 
@@ -85,12 +85,12 @@ fn byte_addressed_boards_store_each_digital_value_in_its_own_byte() {
     );
     let mut memory = BoardMemory::<TwinCAT3>::new(AmsAddr::default(), 2, 2);
 
-    memory.write_digital(&first, true).unwrap();
-    memory.write_digital(&second, true).unwrap();
-    memory.write_digital(&first, false).unwrap();
+    memory.write_digital_output(&first, true).unwrap();
+    memory.write_digital_output(&second, true).unwrap();
+    memory.write_digital_output(&first, false).unwrap();
 
-    assert!(!memory.read_digital(&first).unwrap());
-    assert!(memory.read_digital(&second).unwrap());
+    assert!(!memory.read_digital_output(&first).unwrap());
+    assert!(memory.read_digital_output(&second).unwrap());
     assert_eq!(memory.outputs, [0, 1]);
 }
 
@@ -146,7 +146,7 @@ fn invalid_access_kinds_sizes_bits_and_ranges_return_errors() {
     );
     let mut memory = BoardMemory::<TwinCAT2>::new(AmsAddr::default(), 2, 2);
 
-    assert!(memory.write_digital(&digital, true).is_err());
+    assert!(memory.write_digital_output(&digital, true).is_err());
     assert!(memory.write_analog(&analog, 1_u32).is_err());
     assert!(memory.write_analog(&wrong_kind, 1_u16).is_err());
     assert!(memory.read_analog::<u16>(&out_of_bounds).is_err());

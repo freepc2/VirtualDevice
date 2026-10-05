@@ -59,10 +59,7 @@ impl<B: BoardType> BoardMemory<B> {
 
     #[inline]
     fn base_index(&self, addr: &IoAddress<B>) -> Result<usize, &'static str> {
-        let absolute = u64::from(addr.phyaddress)
-            .checked_add(u64::from(addr.offset))
-            .ok_or("Out of bounds")?;
-        let relative = absolute
+        let relative = u64::from(addr.index)
             .checked_sub(u64::from(self.start_address(addr.direction)))
             .ok_or("Out of bounds")?;
         usize::try_from(relative).map_err(|_| "Out of bounds")
@@ -76,17 +73,14 @@ impl<B: BoardType> BoardMemory<B> {
         if bit_position > if B::BOOL_IS_BYTE { 7 } else { 15 } {
             return Err("Invalid bit position for this board");
         }
-        let base = self.base_index(addr)?;
+        let index = self.base_index(addr)?;
         if B::BOOL_IS_BYTE {
-            let index = base
-                .checked_add(usize::from(bit_position))
-                .ok_or("Out of bounds")?;
             Ok((index, 0))
         } else {
-            let index = base
+            let byte_index = index
                 .checked_add(usize::from(bit_position / 8))
                 .ok_or("Out of bounds")?;
-            Ok((index, bit_position % 8))
+            Ok((byte_index, bit_position % 8))
         }
     }
 
@@ -105,7 +99,41 @@ impl<B: BoardType> BoardMemory<B> {
 
     /// Write a digital value.
     #[inline]
+    pub fn write_digital_output(
+        &mut self,
+        addr: &IoAddress<B>,
+        value: bool,
+    ) -> Result<(), &'static str> {
+        if addr.direction != Direction::Output {
+            return Err("Address direction is not Output");
+        }
+        self.write_digital_at(addr, value)
+    }
+
+    /// Write a digital input value.
+    #[inline]
+    pub fn write_digital_input(
+        &mut self,
+        addr: &IoAddress<B>,
+        value: bool,
+    ) -> Result<(), &'static str> {
+        if addr.direction != Direction::Input {
+            return Err("Address direction is not Input");
+        }
+        self.write_digital_at(addr, value)
+    }
+
+    #[inline]
     pub fn write_digital(
+        &mut self,
+        addr: &IoAddress<B>,
+        value: bool,
+    ) -> Result<(), &'static str> {
+        self.write_digital_at(addr, value)
+    }
+
+    #[inline]
+    fn write_digital_at(
         &mut self,
         addr: &IoAddress<B>,
         value: bool,
@@ -128,7 +156,24 @@ impl<B: BoardType> BoardMemory<B> {
 
     /// Read a digital value.
     #[inline]
-    pub fn read_digital(&self, addr: &IoAddress<B>) -> Result<bool, &'static str> {
+    pub fn read_digital_input(&self, addr: &IoAddress<B>) -> Result<bool, &'static str> {
+        if addr.direction != Direction::Input {
+            return Err("Address direction is not Input");
+        }
+        self.read_digital(addr)
+    }
+
+    /// Read a digital output value.
+    #[inline]
+    pub fn read_digital_output(&self, addr: &IoAddress<B>) -> Result<bool, &'static str> {
+        if addr.direction != Direction::Output {
+            return Err("Address direction is not Output");
+        }
+        self.read_digital(addr)
+    }
+
+    #[inline]
+    fn read_digital(&self, addr: &IoAddress<B>) -> Result<bool, &'static str> {
         let (index, bit_position) = self.digital_location(addr)?;
         let byte = *self
             .buffer(addr.direction)
