@@ -1,29 +1,14 @@
-use virtualdevice::{IoType, LocalServer, NetId, PhyAddress};
+use virtualdevice::{AccessKind, AmsAddr, BoardMemory, Direction, IoAddress, TwinCAT3};
 
 fn main() {
-    println!("=== Virtual Device Emulator (New Architecture) ===");
-
-    let mut server = LocalServer::new();
-    let net_id: NetId = 1;
-    let module_id = 1;
-    let io_number = 10;
-
-    let output = PhyAddress::digital(net_id, module_id, io_number, IoType::DigitalOutput, 0, None);
-    server.register(output).expect("failed to register output");
-
-    server
-        .write_digital(net_id, io_number, true)
-        .expect("failed to write digital output");
-
-    println!(
-        "LocalServer initialized with {} network(s).",
-        server.network_count()
+    let output = IoAddress::<TwinCAT3>::new(
+        Direction::Output,
+        0,
+        0,
+        AccessKind::Digital { bit_position: 0 },
     );
-    println!(
-        "Network {} registered module {} and digital output {} (value: {:?}).",
-        net_id,
-        module_id,
-        io_number,
-        server.read_digital(net_id, io_number),
-    );
+    let mut board = BoardMemory::<TwinCAT3>::new(AmsAddr::default(), 1, 1);
+
+    board.write_digital_output(&output, true).expect("write output");
+    println!("Digital output value: {}", board.read_digital_output(&output).expect("read output"));
 }

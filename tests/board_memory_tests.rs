@@ -169,19 +169,3 @@ fn raw_byte_and_fixed_array_access_target_the_selected_buffer() {
     assert_eq!(memory.read_byte_array::<2>(Direction::Output, 0, 2).unwrap(), [30, 40]);
     assert_eq!(memory.read_bytes(Direction::Input, 0, 0, 4).unwrap(), &[0, 0, 10, 20]);
 }
-
-#[test]
-fn motor_emulator_reads_u16_speed_from_the_registered_address() {
-    use virtualdevice::emulators::MotorEmulator;
-    use virtualdevice::{IoType, IoValue, LocalServer, PhyAddress, ValueKind};
-
-    let address = PhyAddress::analog(1, 1, 12, IoType::AnalogInput, 0, ValueKind::U16);
-    let mut server = LocalServer::new();
-    server.register(address).unwrap();
-    server.write_analog(1, 12, IoValue::U16(1500)).unwrap();
-
-    let mut motor = MotorEmulator::new(3);
-    motor.tick(&server, &address);
-    assert_eq!(motor.axis_id, 3);
-    assert_eq!(motor.speed, 1500);
-}
