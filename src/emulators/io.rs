@@ -1,4 +1,4 @@
-/// I/O 에뮬레이터 모듈
+/// I/O emulator.
 pub struct IoEmulator {
     pub board_id: u8,
 }

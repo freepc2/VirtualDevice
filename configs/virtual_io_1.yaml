@@ -1,0 +1,63 @@
+# TwinCAT 2: 750 channels each for DI, DO, AI, and AO (3,000 total).
+# Digital: 16 channels per 2-byte word. Analog i16: 8 channels per 16-byte module.
+# Addresses are contiguous; each direction has its own image.
+board:
+  type: TwinCAT2
+  net_id: 1
+  byte_order: little_endian
+
+totals:
+  digital_input: 750
+  digital_output: 750
+  analog_input: 750
+  analog_output: 750
+  all_io_points: 3000
+
+module_groups:
+  - name: digital_inputs
+    kind: digital
+    direction: input
+    channels: 750
+    channels_per_module: 16
+    module_count: 47
+    start_address: 0
+    module_size_bytes: 2
+    memory_size_bytes: 94
+    address_rule: "offset = start_address + (channel / 16) * 2; bit_position = channel % 16"
+
+  - name: digital_outputs
+    kind: digital
+    direction: output
+    channels: 750
+    channels_per_module: 16
+    module_count: 47
+    start_address: 94
+    module_size_bytes: 2
+    memory_size_bytes: 94
+    address_rule: "offset = start_address + (channel / 16) * 2; bit_position = channel % 16"
+
+  - name: analog_inputs
+    kind: analog
+    direction: input
+    channels: 750
+    channels_per_module: 8
+    module_count: 94
+    value_type: i16
+    start_address: 188
+    module_size_bytes: 16
+    memory_size_bytes: 1504
+    address_rule: "offset = start_address + (channel / 8) * 16 + (channel % 8) * 2"
+
+  - name: analog_outputs
+    kind: analog
+    direction: output
+    channels: 750
+    channels_per_module: 8
+    module_count: 94
+    value_type: i16
+    start_address: 1692
+    module_size_bytes: 16
+    memory_size_bytes: 1504
+    address_rule: "offset = start_address + (channel / 8) * 16 + (channel % 8) * 2"
+
+# Each group has 2 spare channels in its final module. Image span: 3,196 bytes.

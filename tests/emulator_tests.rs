@@ -56,7 +56,7 @@ fn benchmarks_memory_creation_reading_and_overwriting_existing_addresses() {
     assert_eq!(server.network_count(), 5);
     assert_eq!(unique_addresses.len(), 1_000);
 
-    // Phase 2: read already registered addresses.
+    // Read registered addresses.
     let digital_read_start = std::time::Instant::now();
     for operation in 0..OPERATIONS_PER_KIND {
         let net_id = NET_IDS[(operation / IO_POINTS_PER_KIND_PER_NETWORK as usize) % NET_IDS.len()];
@@ -79,7 +79,7 @@ fn benchmarks_memory_creation_reading_and_overwriting_existing_addresses() {
     }
     let analog_read_elapsed = analog_read_start.elapsed();
 
-    // Phase 3: overwrite values at the same, already registered addresses.
+    // Overwrite registered values.
     let digital_write_start = std::time::Instant::now();
     for operation in 0..OPERATIONS_PER_KIND {
         let net_id = NET_IDS[(operation / IO_POINTS_PER_KIND_PER_NETWORK as usize) % NET_IDS.len()];
@@ -398,7 +398,7 @@ fn explicit_offsets_allow_mixed_analog_sizes_and_reject_physical_overlap() {
         Err(MemoryError::PhysicalOverlap { .. })
     ));
     assert_eq!(server.read_digital(1, 300), None);
-    // The same offset in the input direction refers to a different external image.
+    // Inputs and outputs use separate images.
     server
         .register(PhyAddress {
             io_type: IoType::DigitalInput,

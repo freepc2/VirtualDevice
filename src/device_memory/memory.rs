@@ -1,16 +1,10 @@
-// src/device_memory/memory.rs
-
 use std::collections::HashMap;
 
 use super::address::{
     AccessMode, AddressError, IoNumber, IoType, NetId, PhyAddress, PhysicalIoAddress, ValueKind,
 };
 
-// ============================================================
-// IoValue
-// ============================================================
-
-/// Value returned from / written to virtual memory.
+/// Value stored in virtual memory.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum IoValue {
     Bool(bool),
@@ -62,8 +56,7 @@ struct OccupiedByte {
     bit_owners: [Option<IoNumber>; 8],
 }
 
-/// Values are stored in direction-specific arrays. Physical lookup indexes
-/// these same points, so both access paths observe one value.
+/// Values use direction-specific arrays shared by logical and physical access.
 #[derive(Debug, Default)]
 pub struct NetworkMemory {
     net_id: NetId,
@@ -72,7 +65,7 @@ pub struct NetworkMemory {
     analog_inputs: Vec<Option<IoPoint>>,
     analog_outputs: Vec<Option<IoPoint>>,
     physical_index: HashMap<PhysicalIoAddress, IoNumber>,
-    // Registration-only collision index; never consulted during reads/writes.
+    // Used only to check registration overlaps.
     occupied: HashMap<(u32, bool, usize), OccupiedByte>,
 }
 
@@ -180,7 +173,7 @@ impl NetworkMemory {
             || self.point(counterpart, address.io_number).is_some()
     }
 
-    /// Validate the full registration before changing any maps or values.
+    /// Validate before changing memory state.
     pub fn register(&mut self, address: PhyAddress) -> Result<(), MemoryError> {
         address.validate().map_err(MemoryError::InvalidAddress)?;
         if address.net_id != self.net_id {
@@ -283,7 +276,7 @@ impl NetworkMemory {
         Ok(())
     }
 
-    /// Stops at the first error; earlier registrations remain committed.
+    /// Stop at the first error; keep prior registrations.
     pub fn register_all<I: IntoIterator<Item = PhyAddress>>(
         &mut self,
         addresses: I,
@@ -375,7 +368,7 @@ impl NetworkMemory {
         number: IoNumber,
         value: IoValue,
     ) -> Result<(), MemoryError> {
-        // Find and update the requested slot in one array access.
+        // Update the requested slot first.
         if let Some(point) = self
             .points_mut(io_type)
             .get_mut(usize::from(number))
@@ -383,7 +376,7 @@ impl NetworkMemory {
         {
             return Self::set_value(point, value);
         }
-        // Only the missing-slot path needs the opposite direction lookup.
+        // Check the opposite direction only when the slot is missing.
         let opposite = match io_type {
             IoType::DigitalInput => IoType::DigitalOutput,
             IoType::DigitalOutput => IoType::DigitalInput,

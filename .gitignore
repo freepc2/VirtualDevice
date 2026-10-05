@@ -1,1 +1,22 @@
-/target
+# Rust
+/rust/target/
+/target/
+
+# C++
+/cpp/build/
+/build/
+*.exe
+*.obj
+*.pdb
+*.ilk
+*.suo
+*.user
+CMakeCache.txt
+CMakeFiles/
+Testing/
+
+# IDE / OS
+.vs/
+.vscode/
+.idea/
+*.DS_Store

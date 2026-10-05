@@ -1,51 +1,31 @@
-// src/device_memory/address.rs
-
-/// Network / LAN identifier.
+/// Network identifier.
 pub type NetId = u8;
 
-/// Logical I/O number.
-///
-/// Unique within `(NetId, Digital/Analog)`, regardless of Input/Output.
+/// Logical I/O number within a network and kind.
 pub type IoNumber = u16;
 
 /// Physical module address.
-///
-/// Identifies which module is accessed inside a NetId.
 pub type PhysicalAddress = u32;
 
-/// Byte offset inside a module.
+/// Byte offset within a module.
 pub type OffsetAddress = usize;
 
-/// Bit position inside a packed 16-bit Digital value.
+/// Bit index within a packed word.
 pub type BitPosition = u8;
 
-/// Number of bytes to access.
+/// Access size in bytes.
 pub type SizeBytes = usize;
 
 /// Axis number.
 pub type Axis = u8;
 
-// ============================================================
-// Device Type
-// ============================================================
-
-/// Device / controller type.
-///
-/// Digital access rule:
-///
-/// TwinCAT2 -> Bit
-/// Comizoa  -> Bit
-/// TwinCAT3 -> Byte
+/// Controller type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DeviceType {
     TwinCAT2,
     TwinCAT3,
     Comizoa,
 }
-
-// ============================================================
-// I/O Type
-// ============================================================
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum IoType {
@@ -69,41 +49,26 @@ impl IoType {
     }
 }
 
-// ============================================================
-// Memory Access Mode
-// ============================================================
-
-/// Actual access method for the virtual memory.
-///
-/// Describes external access; internal values are stored directly.
+/// Memory access width and layout.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AccessMode {
-    /// Digital packed into 16-bit data.
+    /// Packed 16-bit digital access.
     Bit16,
 
-    /// Direct 1-byte access.
+    /// Direct byte access.
     Byte,
 
-    /// Direct 2-byte access.
+    /// Direct word access.
     Word,
 
-    /// Direct 4-byte access.
+    /// Direct double-word access.
     DWord,
 
-    /// Direct 8-byte access.
+    /// Direct quad-word access.
     QWord,
 }
 
-// ============================================================
-// Value Kind
-// ============================================================
-
-/// Integer type used to interpret module raw data.
-///
-/// Float and String are intentionally excluded.
-///
-/// Signed / Unsigned changes interpretation only.
-/// The actual memory size is determined by the type size.
+/// Integer type used to interpret raw module data.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ValueKind {
     U8,
@@ -144,71 +109,38 @@ impl ValueKind {
     }
 }
 
-// ============================================================
-// Physical Address
-// ============================================================
-
-/// Unified physical I/O address.
-///
-/// Logical structure:
-///
-/// NetId
-///   -> Which network / LAN?
-///
-/// PhysicalAddress
-///   -> Which physical module?
-///
-/// IoNumber
-///   -> Which logical I/O?
-///
-/// Offset
-///   -> Which byte inside the module?
-///
-/// Size
-///   -> How many bytes?
-///
-/// BitPosition
-///   -> Which bit for bit access?
-///
-/// AccessMode
-///   -> How is the memory accessed?
-///
-/// ValueKind
-///   -> How is the raw value interpreted?
+/// Physical address and layout for one I/O point.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PhyAddress {
-    /// Network / LAN identifier.
+    /// Network identifier.
     pub net_id: NetId,
 
-    /// Logical I/O number.
+    /// Logical channel number.
     pub io_number: IoNumber,
 
-    /// Physical module address.
+    /// Module start address.
     pub physical_address: PhysicalAddress,
 
-    /// Byte offset inside the module.
+    /// Byte offset within the module.
     pub offset: OffsetAddress,
 
-    /// Bit position for packed Digital access.
-    ///
-    /// Some(0..15) for Bit16.
-    /// None for direct Byte/Word/DWord/QWord access.
+    /// Bit index for packed digital access.
     pub bit_position: Option<BitPosition>,
 
-    /// Number of bytes accessed.
+    /// Access size in bytes.
     pub size_bytes: SizeBytes,
 
-    /// Actual memory access mode.
+    /// Memory access mode.
     pub access_mode: AccessMode,
 
-    /// Raw integer interpretation.
+    /// Value interpretation.
     pub value_kind: ValueKind,
 
-    /// Digital / Analog + Input / Output.
+    /// I/O kind and direction.
     pub io_type: IoType,
 }
 
-/// Physical lookup key, independent of the logical I/O number.
+/// Physical lookup key without a logical channel number.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PhysicalIoAddress {
     pub physical_address: PhysicalAddress,
@@ -226,8 +158,7 @@ pub enum AddressError {
     OffsetOverflow,
 }
 
-/// Channel layout for one Comizoa module and one input/output direction.
-/// Digital channels occupy whole 16-bit words; analog channels follow them.
+/// Comizoa channel counts and analog type.
 #[derive(Debug, Clone, Copy)]
 pub struct ComizoaLayout {
     pub digital_channels: u16,
@@ -236,7 +167,7 @@ pub struct ComizoaLayout {
 }
 
 impl PhyAddress {
-    /// Explicit byte/bit location, suitable for known TwinCAT offsets.
+    /// Create a digital address at an explicit offset.
     pub fn digital(
         net_id: NetId,
         physical_address: PhysicalAddress,
@@ -262,7 +193,7 @@ impl PhyAddress {
         }
     }
 
-    /// Explicit byte location; the I/O number never determines the offset.
+    /// Create an analog address at an explicit offset.
     pub fn analog(
         net_id: NetId,
         physical_address: PhysicalAddress,
@@ -284,8 +215,7 @@ impl PhyAddress {
         }
     }
 
-    /// Generate a Comizoa location from a channel and the complete module layout.
-    /// Registration order and logical I/O numbering do not affect this location.
+    /// Calculate a Comizoa address from its channel layout.
     pub fn from_comizoa(
         net_id: NetId,
         physical_address: PhysicalAddress,

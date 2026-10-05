@@ -1,7 +1,7 @@
 use super::address::{IoNumber, IoType, NetId, PhyAddress, PhysicalIoAddress};
 use super::memory::{IoValue, MemoryError, NetworkMemory};
 
-/// Networks are indexed directly by their small, unsigned NetId.
+/// Networks are indexed by NetId.
 #[derive(Debug, Default)]
 pub struct LocalServer {
     networks: Vec<Option<NetworkMemory>>,
@@ -29,7 +29,7 @@ impl LocalServer {
         address.validate().map_err(MemoryError::InvalidAddress)?;
         self.add_network(address.net_id).register(address)
     }
-    /// Stops at the first error; previously successful registrations remain.
+    /// Stop at the first error; keep prior registrations.
     pub fn register_all<I: IntoIterator<Item = PhyAddress>>(
         &mut self,
         addresses: I,
@@ -79,7 +79,7 @@ impl LocalServer {
             .ok_or(MemoryError::NetworkNotFound(net_id))?
             .write_io(io_type, number, value)
     }
-    /// This key contains only physical location and I/O type, not an I/O number.
+    /// Read by physical location and I/O type.
     pub fn read_physical(&self, net_id: NetId, key: &PhysicalIoAddress) -> Option<IoValue> {
         self.network(net_id)?.read_physical(key)
     }
